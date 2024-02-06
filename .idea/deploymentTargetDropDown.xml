@@ -12,23 +12,14 @@
         </deviceKey>
       </Target>
     </targetSelectedWithDropDown>
-    <timeTargetWasSelectedWithDropDown value="2024-01-12T10:05:39.690219400Z" />
+    <timeTargetWasSelectedWithDropDown value="2024-02-05T07:20:40.921118500Z" />
     <runningDeviceTargetsSelectedWithDialog>
       <Target>
         <type value="RUNNING_DEVICE_TARGET" />
         <deviceKey>
           <Key>
             <type value="SERIAL_NUMBER" />
-            <value value="4b65098f" />
-          </Key>
-        </deviceKey>
-      </Target>
-      <Target>
-        <type value="RUNNING_DEVICE_TARGET" />
-        <deviceKey>
-          <Key>
-            <type value="VIRTUAL_DEVICE_PATH" />
-            <value value="C:\Users\kisna\.android\avd\Pixel_6_API_31.avd" />
+            <value value="TKQ8IR8DGESKW4KZ" />
           </Key>
         </deviceKey>
       </Target>

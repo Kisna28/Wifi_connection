@@ -28,11 +28,41 @@
     <ListView
         android:id="@+id/peerListView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
+        android:layout_height="400dp"
         android:layout_below="@+id/onOff"
-        android:layout_marginTop="25dp"
-        android:background="@android:color/holo_orange_light" />
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="25dp" />
+
+    <Button
+        android:id="@+id/send"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/peerListView"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="10dp"
+        android:text="Recive" />
+
+    <TextView
+        android:id="@+id/statusTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/send"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="30dp"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:text="File Status"
+        android:textColor="#FF0000" />
+    <TextView
+        android:id="@+id/Group"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:text="group"
+        android:layout_below="@id/statusTextView"
+        android:layout_marginTop="15dp"
+        android:layout_marginStart="10dp"/>
 
     <TextView
         android:id="@+id/connectionStatus"
