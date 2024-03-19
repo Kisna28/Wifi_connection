@@ -6,8 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.icu.text.SimpleDateFormat
 import android.location.LocationManager
+import android.net.Uri
 import android.net.wifi.WifiManager
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
@@ -30,14 +30,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.io.DataInputStream
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.nio.charset.Charset
 import java.util.Date
 import java.util.Locale
 
@@ -172,10 +176,11 @@ class MainActivity : AppCompatActivity() {
         val statusTextView = findViewById<TextView>(R.id.statusTextView)
         //  ********************************************************************************************************
         sendbtn.setOnClickListener {
-            // Server().startServer()
-            createSocketAndReceiveVideo()
-            //  val fileTransferAsyncTask =   FileTransferAsyncTask(this,"192.168.0.34",12345,statusTextView).execute()
-            //  val fileTransferClientTask = FileTransferClientTask(this)
+            //createSocketAndReceiveVideo()
+            receiveVideoFromServer()
+
+            // FileTransferAsyncTask(this,"192.168.0.34",12345,statusTextView).execute()
+            //  FileTransferClientTask(this)
         }
 
         //******************************************************************************************************
@@ -325,6 +330,7 @@ class MainActivity : AppCompatActivity() {
             updateListView()
         }
     }
+
     /* val reader =
         BufferedReader(InputStreamReader(inputStream, "UTF-8")) // For text messages
         while (true) {
@@ -332,382 +338,489 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 statusTextView.text = message// Display in a text view
             }*/
+
+
+    /* @OptIn(DelicateCoroutinesApi::class)
+     private fun createSocketAndReceiveVideo() {
+         val statusTextView = findViewById<TextView>(R.id.statusTextView)
+         GlobalScope.launch(Dispatchers.IO) {
+             val socket = Socket()
+
+             try {
+                 socket.connect(InetSocketAddress("192.168.0.34", 12345), 200000)
+                 val inputStream = DataInputStream(socket.getInputStream())
+
+                 // Read the number of videos to receive
+                 val numVideos = inputStream.readInt()
+
+                 // Receive each video
+                 for (i in 1..numVideos) {
+                     // Receive video metadata: filename and size
+                     val fileName = inputStream.readUTF()
+                     val fileSize = inputStream.readFloat()
+
+                     // Create file output stream for the current video
+                     val file = File("/storage/emulated/0/Bemrr/$fileName")
+                     val fileOutputStream = FileOutputStream(file)
+
+                     // Receive video content
+                     val buffer = ByteArray(1024)
+                     var totalBytesRead: Long = 0
+                     var bytesRead = 0
+                     while (totalBytesRead < fileSize && inputStream.read(buffer).also { bytesRead = it } != -1) {
+                         fileOutputStream.write(buffer, 0, bytesRead)
+                         totalBytesRead += bytesRead
+                     }
+
+                     // Close file output stream
+                     fileOutputStream.close()
+
+                     // Update UI with received video information
+                     withContext(Dispatchers.Main) {
+                         statusTextView.text = "Received video $i: $fileName"
+                     }
+                 }
+
+                 // All videos received
+                 withContext(Dispatchers.Main) {
+                     Toast.makeText(this@MainActivity, "All videos received", Toast.LENGTH_SHORT).show()
+                 }
+             } catch (e: Exception) {
+                 // Handle exceptions
+                 withContext(Dispatchers.Main) {
+                     val errorMessage = "Error : ${e.message}"
+                     statusTextView.text = errorMessage
+                     Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                     Log.e("FailedToReceive", errorMessage, e)
+                 }
+             } finally {
+                 // Close socket
+                 socket.close()
+             }
+         }
+     }*/
+
     /*
 
-        @OptIn(DelicateCoroutinesApi::class)
-        private fun createSocketAndReceiveVideo() {
-            val statusTextView = findViewById<TextView>(R.id.statusTextView)
-            GlobalScope.launch(Dispatchers.IO) {
-                val socket = Socket()
-
-                try {
-                    socket.connect(InetSocketAddress("192.168.0.34", 12346), 200000)
-                    val inputStream = DataInputStream(socket.getInputStream())
-
-                    // Read the number of videos to receive
-                    val numVideos = inputStream.readInt()
-
-                    // Receive each video
-                    for (i in 1..numVideos) {
-                        // Receive video metadata: filename and size
-                        val fileName = inputStream.readUTF()
-                        val fileSize = inputStream.readFloat()
-
-                        // Create file output stream for the current video
-                        val file = File("/storage/emulated/0/Bemrr/$fileName")
-                        val fileOutputStream = FileOutputStream(file)
-
-                        // Receive video content
-                        val buffer = ByteArray(1024)
-                        var totalBytesRead: Long = 0
-                        var bytesRead = 0
-                        while (totalBytesRead < fileSize && inputStream.read(buffer).also { bytesRead = it } != -1) {
-                            fileOutputStream.write(buffer, 0, bytesRead)
-                            totalBytesRead += bytesRead
+            @OptIn(DelicateCoroutinesApi::class)
+            private fun createSocketAndReceiveVideo() {
+                val statusTextView = findViewById<TextView>(R.id.statusTextView)
+                GlobalScope.launch(Dispatchers.IO) {
+                        val socket = Socket()
+                        socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use groupOwnerAddress
+                        val inputStream = socket.getInputStream()
+                        val reader = BufferedReader(InputStreamReader(inputStream))
+                      try {
+                        val uniqueFileNames = mutableSetOf<String>()
+                        var fileName: String? = reader.readLine()
+                        while (!fileName.isNullOrBlank()) {
+                            uniqueFileNames.add(fileName)
+                            fileName = reader.readLine()
                         }
+                        uniqueFileNames.forEach { Log.d("ReceivedFileName", "Received file name: $it") }
 
-                        // Close file output stream
-                        fileOutputStream.close()
 
-                        // Update UI with received video information
-                        withContext(Dispatchers.Main) {
-                            statusTextView.text = "Received video $i: $fileName"
-                        }
-                    }
+         val file = File("/storage/emulated/0/Bemrr/$fileName")
+                            val fileOutputStream = FileOutputStream(file)
+                            val buffer = ByteArray(1024)
+                            var bytesRead: Int
 
-                    // All videos received
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, "All videos received", Toast.LENGTH_SHORT).show()
-                    }
+                            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                                fileOutputStream.write(buffer, 0, bytesRead)
+                            }
+                            fileOutputStream.close()
+
+                            // Ensure file is not empty
+                            if (file.length() == 0L) {
+                                throw IOException("Received empty file: ${file.name}")
+                            }
+
+                          runOnUiThread {
+                                statusTextView.text = "Received Successfully: ${file.name}"
+                                Toast.makeText(this@MainActivity, "Received ${file.name} successfully!", Toast.LENGTH_SHORT).show()
+                            }
+                      // }
                 } catch (e: Exception) {
-                    // Handle exceptions
-                    withContext(Dispatchers.Main) {
-                        val errorMessage = "Error receiving videos: ${e.message}"
-                        statusTextView.text = errorMessage
-                        Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
-                        Log.e("FailedToReceive", errorMessage, e)
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Error receiving: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        Log.d("FailedToReceive", "Error receiving: ${e.message}")
                     }
-                } finally {
-                    // Close socket
-                    socket.close()
                 }
             }
         }
-  */
+
+    */
+
+    /*
+        private fun createSocketAndReceiveVideo() {
+            GlobalScope.launch(Dispatchers.IO) {
+                val socket = Socket()
+                socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
+                val inputStream = socket.getInputStream()
+                val reader = BufferedReader(InputStreamReader(inputStream))
+                try {
+                    var fileName: String? = reader.readLine()
+
+                    while (!fileName.isNullOrBlank()) {
+
+                            saveFile(fileName, reader)
+                        fileName = reader.readLine()
+
+                        Log.d("ReceivedFile", "Received file: $fileName")
+                    }
+                    socket.close()
+                } catch (e: IOException) {
+                    Log.e("ReceiveError", "Error receiving files: ${e.message}", e)
+                }
+            }
+        }
+        private  fun saveFile(fileName: String?, reader: BufferedReader) {
+            if (fileName.isNullOrBlank()) return
+
+            val file = File("/storage/emulated/0/Bemrr/$fileName")
+            val fileOutputStream = FileOutputStream(file)
+
+            var line: String? = reader.readLine()
+            while (line != null && line != "EOF") {
+                fileOutputStream.write(line.toByteArray())
+                line = reader.readLine()
+            }
+            fileOutputStream.close()
+            Log.d("ReceivedFile", "Received file: $fileName")
+        }
+
+
+    */
+
     /*
 
-        @OptIn(DelicateCoroutinesApi::class)
         private fun createSocketAndReceiveVideo() {
-            val statusTextView = findViewById<TextView>(R.id.statusTextView)
             GlobalScope.launch(Dispatchers.IO) {
-                    val socket = Socket()
-                    socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use groupOwnerAddress
-                    val inputStream = socket.getInputStream()
-                    val reader = BufferedReader(InputStreamReader(inputStream))
                 try {
-                    val uniqueFileNames = mutableSetOf<String>()
-                    var fileName: String? = reader.readLine()
-                    while (!fileName.isNullOrBlank()) {
-                        uniqueFileNames.add(fileName)
-                        fileName = reader.readLine()
+                    val socket = Socket()
+                    socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
+                    val inputStream = socket.getInputStream()
+
+                    var fileCount = 0
+                    var bytesRead: Int
+                    val buffer = ByteArray(1024)
+                    val directory = File("/storage/emulated/0/Bemrr/")
+                    if (!directory.exists()) {
+                        directory.mkdirs()
                     }
-                    uniqueFileNames.forEach { Log.d("ReceivedFileName", "Received file name: $it") }
+                    val file = File(directory, "received_video_$fileCount.mp4")
+                    val fileOutputStream = FileOutputStream(file)
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        fileOutputStream.write(buffer, 0, bytesRead)
+                    }
+                    fileOutputStream.close()
+                    Log.d("ReceivedFile", "Received file: ${file.name}")
+                    fileCount++
 
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            applicationContext,
+                            "Received $fileCount video files successfully!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
 
+                    socket.close()
+                } catch (e: IOException) {
+                    Log.e("ReceiveError", "Error receiving files: ${e.message}", e)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            applicationContext,
+                            "Error receiving files: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        }
 
+    */
+    /*
 
+        private fun createSocketAndReceiveVideo() {
+            GlobalScope.launch(Dispatchers.IO) {
+                val directory = File("/storage/emulated/0/Bemrr/")
+                if (!directory.exists()) {
+                    directory.mkdirs()
+                }
 
+                try {
+                    val socket = Socket()
+                    socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
+                    val inputStream = socket.getInputStream()
 
-              //    var fileCount = 0
-               //    while (true) {
-                      // Receive file name from the server
-                 //    val fileName = reader.re
-                     //  if (fileName.isNullOrEmpty()) break // Break loop if no more file names received
-                    //   Log.d("ReceivedFileName", "Received file name: $fileName")
-                     //  fileCount++
+                    var fileCount = 0
+                    var bytesRead: Int
+                    val buffer = ByteArray(1024)
 
-                        // Proceed to receive file data
-                       */
-    /* val file = File("/storage/emulated/0/Bemrr/$fileName")
+                    while (true) {
+                        val file = File(directory, "received_video_$fileCount.mp4")
                         val fileOutputStream = FileOutputStream(file)
-                        val buffer = ByteArray(1024)
-                        var bytesRead: Int
 
                         while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                             fileOutputStream.write(buffer, 0, bytesRead)
                         }
                         fileOutputStream.close()
+                        Log.d("ReceivedFile", "Received file: ${file.name}")
+                        fileCount++
+                    }
 
-                        // Ensure file is not empty
-                        if (file.length() == 0L) {
-                            throw IOException("Received empty file: ${file.name}")
-                        }
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            applicationContext,
+                            "Received $fileCount video files successfully!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
 
-                        runOnUiThread {
-                            statusTextView.text = "Received Successfully: ${file.name}"
-                            Toast.makeText(this@MainActivity, "Received ${file.name} successfully!", Toast.LENGTH_SHORT).show()
-                        }*//*
-
-
-
-
-
-              // }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Error receiving: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    Log.d("FailedToReceive", "Error receiving: ${e.message}")
+                    socket.close()
+                } catch (e: IOException) {
+                    Log.e("ReceiveError", "Error receiving files: ${e.message}", e)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            applicationContext,
+                            "Error receiving files: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             }
         }
-    }
 
-*/
-/*
-    private fun createSocketAndReceiveVideo() {
+
+    */
+
+    /*private fun createSocketAndReceiveVideo(): Int {
+        var fileCount = 0
+
         GlobalScope.launch(Dispatchers.IO) {
-            val socket = Socket()
-            socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
-            val inputStream = socket.getInputStream()
-            val reader = BufferedReader(InputStreamReader(inputStream))
+            val directory = File("/storage/emulated/0/Bemrr/")
+            if (!directory.exists()) {
+                directory.mkdirs()
+            }
+
             try {
-                var fileName: String? = reader.readLine()
+                val socket = Socket()
+                socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
+                val inputStream = socket.getInputStream()
+                val dataInputStream = DataInputStream(inputStream)
 
-                while (!fileName.isNullOrBlank()) {
-
-                        saveFile(fileName, reader)
-                    fileName = reader.readLine()
-
-                    Log.d("ReceivedFile", "Received file: $fileName")
+                while (true) {
+                    // Read the size of the next file (assuming it's sent as an int)
+                    val fileSize = dataInputStream.readInt()
+    //                if (fileSize == -1) {
+    //                    // No more data available, all files received
+    //                    break
+    //                }
+                    // Read the file data
+                    val fileData = ByteArray(fileSize)
+                    dataInputStream.readFully(fileData)
+                    // Save the file
+                    val file = File(directory, "received_video.mp4")
+                    val fileOutputStream = FileOutputStream(file)
+                    fileOutputStream.write(fileData)
+                    fileOutputStream.close()
+                    Log.d("ReceivedFile", "Received file: ${file.name}")
+                    fileCount++
                 }
+
                 socket.close()
             } catch (e: IOException) {
                 Log.e("ReceiveError", "Error receiving files: ${e.message}", e)
             }
         }
-    }
-    private  fun saveFile(fileName: String?, reader: BufferedReader) {
-        if (fileName.isNullOrBlank()) return
 
-        val file = File("/storage/emulated/0/Bemrr/$fileName")
-        val fileOutputStream = FileOutputStream(file)
-
-        var line: String? = reader.readLine()
-        while (line != null && line != "EOF") {
-            fileOutputStream.write(line.toByteArray())
-            line = reader.readLine()
-        }
-        fileOutputStream.close()
-        Log.d("ReceivedFile", "Received file: $fileName")
-    }
+        return fileCount
+    }*/
 
 
-*/
-
-//    private fun createSocketAndReceiveVideo() {
-//        GlobalScope.launch(Dispatchers.IO) {
-//            try {
-//                val socket = Socket()
-//                socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
-//                val inputStream = socket.getInputStream()
-//
-//                var fileCount = 0
-//                var bytesRead: Int
-//                val buffer = ByteArray(1024)
-//                val directory = File("/storage/emulated/0/Bemrr/")
-//                if (!directory.exists()) {
-//                    directory.mkdirs()
-//                }
-//                val file = File(directory, "received_video_$fileCount.mp4")
-//                val fileOutputStream = FileOutputStream(file)
-//                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-//                    fileOutputStream.write(buffer, 0, bytesRead)
-//                }
-//                fileOutputStream.close()
-//                Log.d("ReceivedFile", "Received file: ${file.name}")
-//                fileCount++
-//
-//                withContext(Dispatchers.Main) {
-//                    Toast.makeText(
-//                        applicationContext,
-//                        "Received $fileCount video files successfully!",
-//                        Toast.LENGTH_SHORT
-//                    ).show()
-//                }
-//
-//                socket.close()
-//            } catch (e: IOException) {
-//                Log.e("ReceiveError", "Error receiving files: ${e.message}", e)
-//                withContext(Dispatchers.Main) {
-//                    Toast.makeText(
-//                        applicationContext,
-//                        "Error receiving files: ${e.message}",
-//                        Toast.LENGTH_SHORT
-//                    ).show()
-//                }
-//            }
-//        }
-//    }
-
-//    private fun createSocketAndReceiveVideo() {
-//        GlobalScope.launch(Dispatchers.IO) {
-//            val directory = File("/storage/emulated/0/Bemrr/")
-//            if (!directory.exists()) {
-//                directory.mkdirs()
-//            }
-//
-//            try {
-//                val socket = Socket()
-//                socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
-//                val inputStream = socket.getInputStream()
-//
-//                var fileCount = 0
-//                var bytesRead: Int
-//                val buffer = ByteArray(1024)
-//
-//                while (true) {
-//                    val file = File(directory, "received_video_$fileCount.mp4")
-//                    val fileOutputStream = FileOutputStream(file)
-//
-//                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-//                        fileOutputStream.write(buffer, 0, bytesRead)
-//                    }
-//                    fileOutputStream.close()
-//                    Log.d("ReceivedFile", "Received file: ${file.name}")
-//                    fileCount++
-//                }
-//
-//                withContext(Dispatchers.Main) {
-//                    Toast.makeText(
-//                        applicationContext,
-//                        "Received $fileCount video files successfully!",
-//                        Toast.LENGTH_SHORT
-//                    ).show()
-//                }
-//
-//                socket.close()
-//            } catch (e: IOException) {
-//                Log.e("ReceiveError", "Error receiving files: ${e.message}", e)
-//                withContext(Dispatchers.Main) {
-//                    Toast.makeText(
-//                        applicationContext,
-//                        "Error receiving files: ${e.message}",
-//                        Toast.LENGTH_SHORT
-//                    ).show()
-//                }
-//            }
-//        }
-//    }
-private fun createSocketAndReceiveVideo(): Int {
-    var fileCount = 0
-
-    GlobalScope.launch(Dispatchers.IO) {
-        val directory = File("/storage/emulated/0/Bemrr/")
-        if (!directory.exists()) {
-            directory.mkdirs()
-        }
-
-        try {
-            val socket = Socket()
-            socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
-            val inputStream = socket.getInputStream()
-            val dataInputStream = DataInputStream(inputStream)
-
-            while (true) {
-                // Read the size of the next file (assuming it's sent as an int)
-                val fileSize = dataInputStream.readInt()
-                if (fileSize == -1) {
-                    // No more data available, all files received
-                    break
-                }
-
-                // Read the file data
-                val fileData = ByteArray(fileSize)
-                dataInputStream.readFully(fileData)
-
-                // Save the file
-                val file = File(directory, "received_video_$fileCount.mp4")
-                val fileOutputStream = FileOutputStream(file)
-                fileOutputStream.write(fileData)
-                fileOutputStream.close()
-
-                Log.d("ReceivedFile", "Received file: ${file.name}")
-                fileCount++
+    /*
+    private fun createSocketAndReceiveVideo(){
+        GlobalScope.launch(Dispatchers.IO) {
+            val directory = File("/storage/emulated/0/Bemrr/")
+            if (!directory.exists()) {
+                directory.mkdirs()
             }
 
-            socket.close()
-        } catch (e: IOException) {
-            Log.e("ReceiveError", "Error receiving files: ${e.message}", e)
+            try {
+                val socket = Socket()
+                socket.connect(InetSocketAddress("192.168.0.34", 12345)) // Use appropriate server address and port
+                val inputStream = socket.getInputStream()
+                val dataInputStream = DataInputStream(inputStream)
+                    val fileSize = dataInputStream.readInt()
+                // Read the file data
+                    val fileData = ByteArray(fileSize)
+                    dataInputStream.readFully(fileData)
+
+                    // Save the file
+                    val file = File(directory, "received_video.mp4")
+                    val fileOutputStream = FileOutputStream(file)
+                    fileOutputStream.write(fileData)
+                    fileOutputStream.close()
+
+                    Log.d("ReceivedFile", "Received file: ${file.name}")
+
+    //            }
+
+                socket.close()
+            } catch (e: IOException) {
+                Log.e("ReceiveError", "Error receiving files: ${e.message}", e)
+            }
         }
-    }
 
-    return fileCount
-}
+    }*/
 
 
+    /*
+           @OptIn(DelicateCoroutinesApi::class)
+           private fun createSocketAndReceiveVideo() {
+               val statusTextView = findViewById<TextView>(R.id.statusTextView)
+               GlobalScope.launch(Dispatchers.IO) {
+                   var socket: Socket? = null
+                   try {
+                       socket = Socket()
+                       socket.connect(InetSocketAddress("192.168.0.34", 12345), 200000)
 
+                       val inputStream = BufferedReader(InputStreamReader(socket.getInputStream()))
 
+                       var fileCounter = 0 // Counter to track the number of videos received
+                       val maxVideosToReceive = 5 // Define the maximum number of videos to receive
+
+                       while (fileCounter < maxVideosToReceive) {
+                           val fileName = inputStream.readLine() ?: break // Exit loop if no more videos
+
+                           // Get the directory specific to your app
+                           val directory = externalCacheDir
+                           directory?.let {
+                               val file = File("/storage/emulated/0/Bemrr/$fileName.mp4")
+                               val fileOutputStream = FileOutputStream(file)
+
+                               var line: String?
+                               while (inputStream.readLine().also { line = it } != null) {
+                                   if (line == "END_OF_FILE") break
+                                   fileOutputStream.write(line!!.toByteArray())
+                                   fileOutputStream.write(System.getProperty("line.separator")!!.toByteArray())
+                               }
+
+                               fileOutputStream.close()
+
+                               withContext(Dispatchers.Main) {
+                                   statusTextView.text = "Received video $fileName successfully"
+                                   Toast.makeText(this@MainActivity, "Received video $fileName", Toast.LENGTH_SHORT).show()
+                               }
+
+                               fileCounter++
+                           } ?: run {
+                               Log.e("FileError", "External cache directory is null")
+
+                           }
+                       }
+                       withContext(Dispatchers.Main) {
+                           statusTextView.text = "Received $fileCounter videos"
+                           Toast.makeText(this@MainActivity, "Received $fileCounter videos", Toast.LENGTH_SHORT).show()
+                       }
+                   } catch (e: Exception) {
+                       withContext(Dispatchers.Main) {
+                           val errorMessage = "Error receiving videos: ${e.message}"
+                           statusTextView.text = errorMessage
+                           Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                           Log.e("FailedToReceive", errorMessage, e)
+                       }
+                   } finally {
+                       try {
+                           socket?.close()
+                       } catch (e: IOException) {
+                           Log.e("SocketCloseError", "Error closing socket: ${e.message}", e)
+                       }
+                   }
+               }
+           }
+
+      */
 
     /*   @OptIn(DelicateCoroutinesApi::class)
-       private fun createSocketAndReceiveVideo() {
-           val statusTextView = findViewById<TextView>(R.id.statusTextView)
+       private fun receiveVideoFromServer() {
            GlobalScope.launch(Dispatchers.IO) {
+               val statusTextView = findViewById<TextView>(R.id.statusTextView)
                var socket: Socket? = null
                try {
+                   // Replace placeholders with server details
+                   val serverAddress = "192.168.0.34"
+                   val serverPort = 12345
+
+                   // Connect to server
                    socket = Socket()
-                   socket.connect(InetSocketAddress("192.168.0.34", 12346), 200000)
+                   socket.connect(InetSocketAddress(serverAddress, serverPort))
 
-                   val inputStream = BufferedReader(InputStreamReader(socket.getInputStream()))
+                   // Input stream for reading video data
+                   val inputStream = socket.getInputStream()
 
-                   var fileCounter = 0 // Counter to track the number of videos received
-                   val maxVideosToReceive = 5 // Define the maximum number of videos to receive
+                   // Receive file metadata (optional)
+                   val fileName = inputStream.bufferedReader(Charset.forName("UTF-8")).readLine()
+                   val bufferedReader = BufferedReader(InputStreamReader(inputStream))
+                   val fileSizeString = bufferedReader.readLine()
+                   val fileSize: Long = fileSizeString?.toLongOrNull() ?: -1L
 
-                   while (fileCounter < maxVideosToReceive) {
-                       val fileName = inputStream.readLine() ?: break // Exit loop if no more videos
+                   // Handle potential errors
+                   if (fileName == null || fileSize == -1L) {
+                       Toast.makeText(this@MainActivity, "Invalid file metadata", Toast.LENGTH_SHORT).show()
+                       return@launch
+                   }
 
-                       // Get the directory specific to your app
-                       val directory = externalCacheDir
-                       directory?.let {
-                           val file = File("/storage/emulated/0/Bemrr/$fileName.mp4")
-                           val fileOutputStream = FileOutputStream(file)
+                   // Choose an appropriate directory and file path
+                   val directory = externalCacheDir ?: run {
+                       Log.e("FileError", "External cache directory is null")
+                       Toast.makeText(this@MainActivity, "Failed to access external storage", Toast.LENGTH_SHORT).show()
+                       return@launch
+                   }
+                   val file = File(directory, fileName)
 
-                           var line: String?
-                           while (inputStream.readLine().also { line = it } != null) {
-                               if (line == "END_OF_FILE") break
-                               fileOutputStream.write(line!!.toByteArray())
-                               fileOutputStream.write(System.getProperty("line.separator")!!.toByteArray())
-                           }
+                   // Create output stream for saving the video
+                   val fileOutputStream = FileOutputStream(file)
 
-                           fileOutputStream.close()
+                   // Receive and write video data in chunks
+                   var bytesRead: Int
+                   val buffer = ByteArray(1024)
+                   var totalBytesReceived = 0L
+                   while (true) {
+                       bytesRead = inputStream.read(buffer)
+                       if (bytesRead == -1) break // End of stream
 
-                           withContext(Dispatchers.Main) {
-                               statusTextView.text = "Received video $fileName successfully"
-                               Toast.makeText(this@MainActivity, "Received video $fileName", Toast.LENGTH_SHORT).show()
-                           }
+                       fileOutputStream.write(buffer, 0, bytesRead)
+                       totalBytesReceived += bytesRead
 
-                           fileCounter++
-                       } ?: run {
-                           Log.e("FileError", "External cache directory is null")
-
+                       // Update UI with progress (optional)
+                       withContext(Dispatchers.Main) {
+                           val progress = (totalBytesReceived * 100.0 / fileSize).toInt()
+                           statusTextView.text = "Receiving video $fileName: $progress%"
                        }
                    }
 
+                   // Finish writing and close streams
+                   fileOutputStream.close()
+
+                   // Success message and optional video playback (use a suitable video player library)
                    withContext(Dispatchers.Main) {
-                       statusTextView.text = "Received $fileCounter videos"
-                       Toast.makeText(this@MainActivity, "Received $fileCounter videos", Toast.LENGTH_SHORT).show()
+                       Toast.makeText(this@MainActivity, "Received video $fileName", Toast.LENGTH_SHORT).show()
+                       // ... Play video
                    }
                } catch (e: Exception) {
+                   // Handle network errors, connection failures, and other exceptions
+                   Log.e("VideoReceiveError", "Error receiving video: ${e.message}", e)
                    withContext(Dispatchers.Main) {
-                       val errorMessage = "Error receiving videos: ${e.message}"
-                       statusTextView.text = errorMessage
-                       Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
-                       Log.e("FailedToReceive", errorMessage, e)
+                       Toast.makeText(this@MainActivity, "Error receiving video", Toast.LENGTH_SHORT).show()
                    }
                } finally {
+                   // Close socket gracefully
                    try {
                        socket?.close()
                    } catch (e: IOException) {
@@ -715,12 +828,79 @@ private fun createSocketAndReceiveVideo(): Int {
                    }
                }
            }
-       }*/
+       }
+
+   */
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun receiveVideoFromServer() {
+        GlobalScope.launch(Dispatchers.IO) {
+            var socket: Socket? = null
+            try {
+                // Replace placeholders with server details
+                val host = "192.168.0.34" // YOUR ACTUAL SERVER IP
+                val port = 12345       // YOUR ACTUAL SERVER PORT
+                // Choose a suitable save directory and file path
+                val directory = requireNotNull(externalCacheDir) {
+                    Log.e("VideoReceiveError", "External cache directory is null")
+                    return@launch // Gracefully handle the error
+                }
+                // Connect to server
+                socket = Socket()
+                socket.connect(InetSocketAddress(host, port), 200000)
+                var filecount = 0
+                while (filecount < 12) {
+
+                    val saveFilePath = File(directory, "video$filecount.mp4") // Change if needed
+                    // Input stream for reading video data
+                    val inputStream = socket.getInputStream()
+                    Log.i("MainActivty", "socket.isInputShutdown ${socket.isInputShutdown}")
+                    //   val inputStream = BufferedInputStream(socket.getInputStream())
+                    // Create output stream for saving the video
+                    val fileOutputStream = FileOutputStream(saveFilePath)
+                    // Receive and write video data in chunks
+                    val buffer = ByteArray(1024)
+                    var bytesRead: Int
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        fileOutputStream.write(buffer, 0, bytesRead)
+                    }
+                    // Finish writing and close streams
+                    fileOutputStream.close()
+                    // Success message and optional video playback (use a suitable video player library)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Video received successfully: $saveFilePath",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        Log.d("ReciveSucc", "Video received successfully: $saveFilePath")
+                        // ... Play video
+                    }
+                    filecount++
+                }
+            } catch (e: Exception) {
+                // Handle network errors, connection failures, and other exceptions
+                Log.e("VideoReceiveError", "Error receiving video: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Error receiving video", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            } finally {
+                // Close socket gracefully
+                try {
+                    socket?.close()
+                } catch (e: IOException) {
+                    Log.e("SocketCloseError", "Error closing socket: ${e.message}", e)
+                }
+            }
+        }
+    }
+
 
     private fun updateListView() {
         listAdapter.notifyDataSetChanged()
     }
 }
+
 
 
 
