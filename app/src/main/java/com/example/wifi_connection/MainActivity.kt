@@ -831,6 +831,8 @@ class MainActivity : AppCompatActivity() {
        }
 
    */
+
+
     @OptIn(DelicateCoroutinesApi::class)
     private fun receiveVideoFromServer() {
         GlobalScope.launch(Dispatchers.IO) {
