@@ -41,7 +41,21 @@
         android:layout_marginStart="10dp"
         android:layout_marginTop="20dp"
         android:layout_marginBottom="10dp"
-        android:text="Recive" />
+        android:layout_marginEnd="20dp"
+        android:text="Send" />
+
+
+    <Button
+        android:id="@+id/receive"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:foregroundGravity="left"
+        android:text="Receive"
+        android:layout_toEndOf="@id/send"
+        android:layout_below="@id/peerListView"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="30dp"
+        />
 
     <TextView
         android:id="@+id/statusTextView"
