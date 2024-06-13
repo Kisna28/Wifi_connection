@@ -21,11 +21,14 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -43,24 +46,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var wifiManager: WifiManager
     private lateinit var receiver: WifiDirectBrodcastReceiver
     private lateinit var locationManager: LocationManager
-    val PERMISSION_WIFI = Manifest.permission.ACCESS_WIFI_STATE
-    private val PICK_IMAGE_REQUEST_CODE = 12
     private lateinit var wifiP2pInfo: WifiP2pInfo
     private lateinit var peerListAdapter: ArrayAdapter<String>
     private val intentFilter = IntentFilter()
     private val peers = mutableListOf<WifiP2pDevice>()
+    private val STORAGE_PERMISSION_CODE = 123
 
-    /*//DIRECT-bemrr, MAC Address: ba:27:eb:b9:1d:74  *********************
-    //Chirag, MAC Address: 06:98:80:da:57:5c
-    //KISNA, MAC Address: 86:19:d7:09:64:9e
-    //Android MITV, MAC Address: b2:41:1d:0e:cb:1f
-    //VIERA_thds630d_b311, MAC Address: 2e:24:ff:6b:54:fe
-    //realme 3 Project ke baad bhi, MAC Address: 8a:e4:e1:5d:39:87
-    //MADHAV BUTANI, MAC Address: 8a:25:f2:0e:5a:9c
-    //realme C21, MAC Address: 22:44:f4:14:2d:37
-    //[TV] Samsung 4 Series (32), MAC Address: f2:70:4f:93:c6:e4*/
+     //DIRECT-bemrr, MAC Address: ba:27:eb:b9:1d:74
+
     companion object {
-        const val MY_PERMISSIONS_REQUEST_LOCATION_AND_WIFI = 123
+        const val MY_PERMISSIONS_REQUEST_LOCATION_AND_WIFI = 101
     }
     // private val allowSSIDs = listOf("ba:27:eb:b9:1d:74")
 
@@ -87,19 +82,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var listAdapter: WiFiPeerListAdapter
 
     @OptIn(DelicateCoroutinesApi::class)
-    @SuppressLint("NewApi", "MissingInflatedId")
+    @SuppressLint("NewApi", "MissingInflatedId", "SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        /*   val groupOwnerIpAddress: String = wifiP2pInfo.groupOwnerAddress.hostAddress!!
-               Log.d("hostAddress", "IpGo: $groupOwnerIpAddress")*/
-
         val btnonoff = findViewById<Button>(R.id.onOff)
         val btnDiscover = findViewById<Button>(R.id.discover)
-        var listView = findViewById<ListView>(R.id.peerListView)
-        val connicationStatus = findViewById<TextView>(R.id.connectionStatus)
-        //  val sendbtn = findViewById<Button>(R.id.send)
+        val listView = findViewById<ListView>(R.id.peerListView)
+        val communicationStatus = findViewById<TextView>(R.id.connectionStatus)
         listAdapter = WiFiPeerListAdapter(this, R.layout.item, peers)
 
         listView.adapter = listAdapter
@@ -138,11 +129,11 @@ class MainActivity : AppCompatActivity() {
                         Toast.makeText(
                             this@MainActivity, "Discovery initiation successful", Toast.LENGTH_SHORT
                         ).show()
-                        connicationStatus.text = "Discovery Started"
+                        communicationStatus.text = "Discovery Started"
                     }
 
                     override fun onFailure(reasonCode: Int) {
-                        connicationStatus.text = "Discovery Started Failed"
+                        communicationStatus.text = "Discovery Started Failed"
                         // Code for when the discovery initiation fails goes here.
                         // Alert the user that something went wrong.
                         Toast.makeText(
@@ -150,7 +141,6 @@ class MainActivity : AppCompatActivity() {
                             "Discovery initiation failed. Reason code: $reasonCode",
                             Toast.LENGTH_SHORT
                         ).show()
-
                     }
                 })
             } else {
@@ -160,30 +150,12 @@ class MainActivity : AppCompatActivity() {
                     MY_PERMISSIONS_REQUEST_LOCATION_AND_WIFI
                 )
             }
-
         }
-
         val sendbtn = findViewById<Button>(R.id.send)
         val receivebtn = findViewById<Button>(R.id.receive)
 
-        val statusTextView = findViewById<TextView>(R.id.statusTextView)
-        //  ********************************************************************************************************
-
-        /*sendbtn.setOnClickListener {
-            GlobalScope.safeLaunch({
-                receiveFiles("192.168.0.34",12345)
-            }){_,_ ->}
-        }*/
-
         receivebtn.setOnClickListener {
-            GlobalScope.launch {
-                try {
-                    FTPManager()
-                } catch (e: Exception) {
-                    // Handle the exception
-                    e.printStackTrace()
-                }
-            }
+            requestStoragePermission()
         }
         sendbtn.setOnClickListener {
             GlobalScope.launch {
@@ -195,12 +167,79 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        //******************************************************************************************************
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
     }
+
+    private fun requestStoragePermission() {
+        val readPermission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+        val writePermission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (readPermission && writePermission) {
+            // Permissions already granted
+            Toast.makeText(this, "Storage permissions already granted!", Toast.LENGTH_SHORT).show()
+            showLoginDialog()
+        } else {
+            // Request permissions if not granted
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                STORAGE_PERMISSION_CODE
+            )
+        }
+    }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == STORAGE_PERMISSION_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+              showLoginDialog()
+            } else {
+                val dialogManager = DialogManager(this)
+                dialogManager.showPermissionsRequiredDialog()
+                Toast.makeText(this, "Media permission is required to Show Videos.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun showLoginDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_login, null)
+        val usernameEditText = dialogView.findViewById<EditText>(R.id.usernameEditText)
+        val passwordEditText = dialogView.findViewById<EditText>(R.id.passwordEditText)
+
+        val dialogBuilder = AlertDialog.Builder(this)
+        dialogBuilder.setView(dialogView)
+        dialogBuilder.setTitle("FTP Login")
+        dialogBuilder.setPositiveButton("Login") { _, _ ->
+            val username = usernameEditText.text.toString()
+            val password = passwordEditText.text.toString()
+
+            GlobalScope.launch {
+                try {
+                    FTPManager().logIn(username, password)
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Login Failed", Toast.LENGTH_SHORT).show()
+                    }
+                    e.printStackTrace()
+                }
+            }
+        }
+        dialogBuilder.setNegativeButton("Cancel") { dialog, _ ->
+            dialog.dismiss()
+        }
+
+        val dialog = dialogBuilder.create()
+        dialog.show()
+    }
+
 
     public override fun onResume() {
         super.onResume()
@@ -212,8 +251,7 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         unregisterReceiver(receiver)
     }
-
-    override fun onRequestPermissionsResult(
+    /*  override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray,
@@ -234,10 +272,29 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             }
         }
-    }
+    }*/
+
+/*    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == PermissionManager.MY_PERMISSIONS_REQUEST_CODE) {
+            if (permissionManager.hasAllPermissions()) {
+                // Permissions granted, continue with your logic (e.g., show login dialog)
+                showLoginDialog()
+            } else {
+                // Permissions denied, show dialog to inform user
+                dialogManager.showPermissionsRequiredDialog()
+            }
+        }
+    }*/
+
 
     private fun connectToPeer(peer: WifiP2pDevice) {
-// Check if the necessary permission is granted
+       // Check if the necessary permission is granted
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             // Permission is granted, proceed with connection initiation
             val config = WifiP2pConfig().apply {
@@ -248,22 +305,12 @@ class MainActivity : AppCompatActivity() {
             }
             // config.groupOwnerIntent=0       /////////////////************************!!!!!!!!!!!!!!!!!
             manager.connect(channel, config, object : WifiP2pManager.ActionListener {
-                val connectionStatus = findViewById<TextView>(R.id.connectionStatus)
                 override fun onSuccess() {
                     // Connection initiation successful
                     Toast.makeText(
                         this@MainActivity, "Connecting.. to ${peer.deviceName}", Toast.LENGTH_SHORT
                     ).show()
                     connect()
-                    //   manager.requestConnectionInfo(channel, connectionInfoListener)
-                    //  connectionStatus.text = "Connected to ${peer.deviceName}"
-                    /*  WifiP2pManager.ConnectionInfoListener { wifiP2pInfo ->
-                        val groupOwnerAddress = wifiP2pInfo.isGroupOwner
-                        Log.d(
-                            "HostIP",
-                            "GroupOwner Ip : $groupOwnerAddress and Device name is ${peer.deviceName}"
-                        )
-                    }*/
                 }
 
                 override fun onFailure(reason: Int) {
@@ -317,7 +364,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     val connectionInfoListener = WifiP2pManager.ConnectionInfoListener { wifiP2pInfo ->
-        if (wifiP2pInfo.isGroupOwner == true) {
+        if (wifiP2pInfo.isGroupOwner) {
             // Your logic for when the device is the group owner
             Log.d("P2PHost", "Connected as Group Owner")
             val group = findViewById<TextView>(R.id.Group)
@@ -335,69 +382,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    /* @OptIn(DelicateCoroutinesApi::class)
-     private fun createSocketAndReceiveVideo() {
-         val statusTextView = findViewById<TextView>(R.id.statusTextView)
-         GlobalScope.launch(Dispatchers.IO) {
-             val socket = Socket()
-
-             try {
-                 socket.connect(InetSocketAddress("192.168.0.34", 12345), 200000)
-                 val inputStream = DataInputStream(socket.getInputStream())
-
-                 // Read the number of videos to receive
-                 val numVideos = inputStream.readInt()
-
-                 // Receive each video
-                 for (i in 1..numVideos) {
-                     // Receive video metadata: filename and size
-                     val fileName = inputStream.readUTF()
-                     val fileSize = inputStream.readFloat()
-
-                     // Create file output stream for the current video
-                     val file = File("/storage/emulated/0/Bemrr/$fileName")
-                     val fileOutputStream = FileOutputStream(file)
-
-                     // Receive video content
-                     val buffer = ByteArray(1024)
-                     var totalBytesRead: Long = 0
-                     var bytesRead = 0
-                     while (totalBytesRead < fileSize && inputStream.read(buffer).also { bytesRead = it } != -1) {
-                         fileOutputStream.write(buffer, 0, bytesRead)
-                         totalBytesRead += bytesRead
-                     }
-
-                     // Close file output stream
-                     fileOutputStream.close()
-
-                     // Update UI with received video information
-                     withContext(Dispatchers.Main) {
-                         statusTextView.text = "Received video $i: $fileName"
-                     }
-                 }
-
-                 // All videos received
-                 withContext(Dispatchers.Main) {
-                     Toast.makeText(this@MainActivity, "All videos received", Toast.LENGTH_SHORT).show()
-                 }
-             } catch (e: Exception) {
-                 // Handle exceptions
-                 withContext(Dispatchers.Main) {
-                     val errorMessage = "Error : ${e.message}"
-                     statusTextView.text = errorMessage
-                     Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
-                     Log.e("FailedToReceive", errorMessage, e)
-                 }
-             } finally {
-                 // Close socket
-                 socket.close()
-             }
-         }
-     }*/
-
-
-    private fun receiveFiles(host: String, port: Int) {
+   /* private fun receiveFiles(host: String, port: Int) {
         try {
 //            Socket(serverIP, port).use { socket ->
             val socket = Socket()
@@ -416,9 +401,9 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-    }
+    }*/
 
-    private fun receiveFile(dataInputStream: DataInputStream, fileCount: Int, totalFileCount: Int) {
+ /*   private fun receiveFile(dataInputStream: DataInputStream, fileCount: Int, totalFileCount: Int) {
         val nameSize = dataInputStream.readInt()
         val nameBytes = ByteArray(nameSize)
         dataInputStream.readFully(nameBytes)
@@ -458,41 +443,12 @@ class MainActivity : AppCompatActivity() {
             ).show()
         }
 
-    }
-
-    /* private fun receiveFilesFTP(host: String, port: Int) {
-         val ftpClient = FTPClient().connect(host, port)
-         val login = FTPClient().login(username, password)
-         if (!login) {
-             Toast.makeText(this, "Login failed", Toast.LENGTH_SHORT).show()
-         }
-         FTPClient().setFileType(FTP.BINARY_FILE_TYPE)
-         FTPClient().enterLocalPassiveMode()
-
-         FTPClient().changeWorkingDirectory("enter remote server directory path")
-         val files : Array<String>? = FTPClient().listNames()
-         if (files == null){return}
-
-         for ((index, file) in files.withIndex()) {
-             if (!downloadFile(ftpClient, file, index, files.size)) {
-                 return
-             }
-         }
-         FTPClient().logout()
-         FTPClient().disconnect()
-
-     }*/
-
-
+    }*/
     private fun updateListView() {
         listAdapter.notifyDataSetChanged()
     }
 }
 
-@OptIn(DelicateCoroutinesApi::class)
-private fun GlobalScope.safeLaunch() {
-    TODO("Not yet implemented")
-}
 
 
 

@@ -36,29 +36,20 @@ class FTPManager {
     private val FTP_SERVER = "192.168.0.34"
     private val FTP_PORT = 12345
     private val REMOTE_DIRECTORY = "/home/bemrrpi5/6-04"
-    private val username = "kisna"
-    private val password = "12345"
+    //   private val username = "kisna"
+    // private val password = "12345"
 
     var lastDownloadedTimestamp = 0L
     private var timer: Timer? = null
     private var isDownloading = false
     val ftpClient = FTPClient()
 
-    init {
-        startFileChecking()
-    }
+    /* init {
+         logIn(username ,password)
+       //  startFileChecking()
+     }*/
 
-    private fun startFileChecking() {
-        timer = timer(period = 20000) {
-            println("Checking for new files...")
-            if (!isDownloading) {
-                downloadFiles()
-            }
-        }
-    }
-
-    private fun downloadFiles() {
-        //  ftpClient.connectTimeout = 300000 // 3 minute
+    fun logIn(username: String, password: String) {
         Log.d("Enter", "Enter FTPClientClass")
         try {
             ftpClient.connect(FTP_SERVER, FTP_PORT)
@@ -70,14 +61,38 @@ class FTPManager {
             if (replyCode in 200..299) {
                 ftpClient.login(username, password)
                 println("${ftpClient.isConnected} Inside if bock")
+
+                ftpClient.setFileType(FTP.BINARY_FILE_TYPE)
+                ftpClient.enterLocalPassiveMode()
+
+                timer = timer(period = 30000) {
+                    println("Checking for new files...")
+                    if (!isDownloading) {
+                        downloadFiles()
+                    }
+                }
             }
             if (!login) {
                 println("FTP login failed.")
                 return
             }
-            ftpClient.setFileType(FTP.BINARY_FILE_TYPE)
-            ftpClient.enterLocalPassiveMode()
+        } catch (e: Exception) {
+            println(e.printStackTrace())
+        }
+    }
 
+    /* private fun startFileChecking() {
+         timer = timer(period = 20000) {
+             println("Checking for new files...")
+             if (!isDownloading) {
+                 downloadFiles()
+             }
+         }
+
+     }*/
+
+    private fun downloadFiles() {
+        try {
             println("************************** THIS IS AFTER SORTED FILE ********************************")
 
             ftpClient.changeWorkingDirectory(REMOTE_DIRECTORY)
@@ -96,14 +111,15 @@ class FTPManager {
                 downloadFile(ftpClient, newestFile)
                 lastDownloadedTimestamp = newestFile.timestamp.timeInMillis
             }
-            ftpClient.logout()
+            // ftpClient.logout()
 
-        }   catch (e: IOException) {
+        } catch (e: IOException) {
             e.printStackTrace()
             Log.d("catchblock", "GO to catch Block")
         } finally {
             try {
-                ftpClient.disconnect()
+                //ftpClient.disconnect()
+               // println("Disconnected...")
             } catch (e: IOException) {
                 e.printStackTrace()
                 Log.d("finally", "GO to finally Block")
@@ -127,7 +143,6 @@ class FTPManager {
             FileOutputStream(localFile).use { outputStream ->
                 if (ftpClient.retrieveFile(file.name, outputStream)) {
                     Log.d("ftpDownload", "File  downloaded: ${file.name}")
-                    Thread.sleep(10000)
                     return true
                 } else {
                     Log.e("ftpDownload", "Failed to download file: ${file.name}")
