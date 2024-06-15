@@ -2,18 +2,21 @@ package com.example.wifi_connection
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.net.Uri
 import android.net.wifi.WifiManager
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
@@ -25,6 +28,7 @@ import android.widget.EditText
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -46,8 +50,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var wifiManager: WifiManager
     private lateinit var receiver: WifiDirectBrodcastReceiver
     private lateinit var locationManager: LocationManager
-    private lateinit var wifiP2pInfo: WifiP2pInfo
-    private lateinit var peerListAdapter: ArrayAdapter<String>
     private val intentFilter = IntentFilter()
     private val peers = mutableListOf<WifiP2pDevice>()
     private val STORAGE_PERMISSION_CODE = 123
@@ -166,7 +168,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
@@ -196,15 +197,15 @@ class MainActivity : AppCompatActivity() {
             )
         }
     }
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == STORAGE_PERMISSION_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-              showLoginDialog()
+                showLoginDialog()
             } else {
                 val dialogManager = DialogManager(this)
                 dialogManager.showPermissionsRequiredDialog()
-                Toast.makeText(this, "Media permission is required to Show Videos.", Toast.LENGTH_SHORT).show()
             }
         }
     }
