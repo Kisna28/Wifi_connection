@@ -10,7 +10,7 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 
-class DialogManager(private val activity: AppCompatActivity) {
+class PermissionDialogManager(private val activity: AppCompatActivity) {
 
     @RequiresApi(Build.VERSION_CODES.R)
     fun showPermissionsRequiredDialog() {

@@ -2,27 +2,21 @@ package com.example.wifi_connection
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.ActivityNotFoundException
-import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.LocationManager
-import android.net.Uri
 import android.net.wifi.WifiManager
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
-import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.Handler
 import android.provider.Settings
 import android.util.Log
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ListView
@@ -36,11 +30,6 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import java.io.DataInputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.net.InetSocketAddress
-import java.net.Socket
 
 
 class MainActivity : AppCompatActivity() {
@@ -204,7 +193,7 @@ class MainActivity : AppCompatActivity() {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 showLoginDialog()
             } else {
-                val dialogManager = DialogManager(this)
+                val dialogManager = PermissionDialogManager(this)
                 dialogManager.showPermissionsRequiredDialog()
             }
         }
