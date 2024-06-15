@@ -5,14 +5,12 @@ Welcome to the WiFi Connection App! This app allows you to easily manage your Wi
 ## Features
 
 - **Turn On WiFi:** Easily toggle your device's WiFi on or off directly from the app.
-
 - **Location Permission:** Grant the necessary location permissions to enable WiFi Direct functionality.
-
 - **Discover Nearby Devices:** Initiate a scan to discover nearby WiFi Direct (P2P) devices in your vicinity.
-
 - **Device List:** View a list of discovered devices, showcasing relevant information.
-
 - **Connectivity:** Establish a connection with a chosen device from the list, enabling seamless communication.
+- **File Sharing Using FTP:** Share files quickly and efficiently using FTP, without the need for an internet connection.
+- **Receive Multiple Files:** Seamlessly receive multiple files from connected devices, ensuring fast and reliable transfers.
 
 ## Getting Started
 
@@ -30,6 +28,12 @@ Welcome to the WiFi Connection App! This app allows you to easily manage your Wi
 
 5. **Connect to a Device:**
    - Tap on a device in the list to initiate a connection.
+
+6. **File Sharing Using FTP:**
+   - Once connected, use the FTP feature to share files. This method does not require an internet connection and ensures fast and secure transfers.
+
+7. **Receive Multiple Files:**
+   - Receive multiple files from connected devices with ease, making file sharing quick and hassle-free.
 
 ## Contributing
 
